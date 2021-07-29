@@ -10,8 +10,10 @@ import com.jeremykruid.lawndemandprovider.R
 class FirebaseAuthService {
     private val auth = FirebaseAuth.getInstance()
 
-    fun loginProvider(context: Context, email: String, password: String, v: View){
+    //TODO: create check auth function here
 
+    fun loginProvider(context: Context, email: String, password: String, v: View){
+        // login provider
         auth.signInWithEmailAndPassword(email, password)
             .addOnSuccessListener {
             Navigation.findNavController(v).navigate(R.id.action_login_to_mapsFragment)
@@ -22,6 +24,7 @@ class FirebaseAuthService {
 
     }
 
+    // register provider
     fun registerProvider(context: Context, email: String, password: String, v: View){
         auth.createUserWithEmailAndPassword(email, password)
             .addOnSuccessListener {
@@ -32,12 +35,12 @@ class FirebaseAuthService {
             }
     }
 
+    //send forgot password email
     fun forgotPassword(context: Context, email: String){
-        auth.sendPasswordResetEmail(email).addOnSuccessListener {
-            Toast.makeText(context, "Email Sent", Toast.LENGTH_SHORT).show()
-        }
+        auth.sendPasswordResetEmail(email)
+            .addOnSuccessListener {
+            Toast.makeText(context, "Email Sent", Toast.LENGTH_SHORT).show() }
             .addOnFailureListener {
-                Toast.makeText(context, it.localizedMessage, Toast.LENGTH_SHORT).show()
-            }
+                Toast.makeText(context, it.localizedMessage, Toast.LENGTH_SHORT).show() }
     }
 }

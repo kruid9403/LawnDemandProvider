@@ -5,13 +5,9 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.lifecycle.ViewModelProviders
-import com.jeremykruid.lawndemandprovider.R
 import com.jeremykruid.lawndemandprovider.databinding.FragmentLoginBinding
-import com.jeremykruid.lawndemandprovider.model.FirebaseAuthService
 import com.jeremykruid.lawndemandprovider.viewModel.LoginViewModel
-import com.jeremykruid.lawndemandprovider.viewModel.MapViewModel
 
 class LoginFragment : Fragment(), View.OnClickListener {
 
@@ -21,7 +17,7 @@ class LoginFragment : Fragment(), View.OnClickListener {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         // Inflate the layout for this fragment
         binding = FragmentLoginBinding.inflate(layoutInflater)
         return binding.root
@@ -44,15 +40,18 @@ class LoginFragment : Fragment(), View.OnClickListener {
     override fun onClick(v: View?) {
         when(v){
             binding.loginLoginButton -> {
+                // login provider
                 viewModel.loginProvider(requireContext(), binding.loginEmail.text.toString(),
                 binding.loginPassword.text.toString(), binding.loginLoginButton)
             }
             binding.loginRegisterButton -> {
+                //register provider
                 viewModel.registerProvider(requireContext(), binding.loginEmail.text.toString(),
                 binding.loginPassword.text.toString(), binding.loginRegisterButton)
             }
             binding.loginForgotPassword -> {
-                Toast.makeText(requireContext(), "Forgot", Toast.LENGTH_SHORT).show()
+                // send forgot email
+                viewModel.sendForgotPassword(requireContext(), binding.loginEmail.text.toString())
             }
         }
     }

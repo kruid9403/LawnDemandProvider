@@ -9,9 +9,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
-import androidx.navigation.Navigation
 import androidx.navigation.fragment.findNavController
-
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
@@ -23,7 +21,6 @@ import com.jeremykruid.lawndemandprovider.databinding.FragmentMapsBinding
 import com.jeremykruid.lawndemandprovider.model.FirestoreDataService
 import com.jeremykruid.lawndemandprovider.model.ProviderObject
 import com.jeremykruid.lawndemandprovider.viewModel.MapViewModel
-import okio.ByteString.Companion.toByteString
 
 class MapsFragment : Fragment(), View.OnClickListener {
 
@@ -36,21 +33,21 @@ class MapsFragment : Fragment(), View.OnClickListener {
     private var providerChecked: Boolean = false
 
     private val providerCheckedObserver = Observer<Boolean>{ checked ->
+        // check if provider data is updated
         providerChecked = checked
-        Toast.makeText(requireContext(), providerChecked.toString(), Toast.LENGTH_SHORT).show()
     }
 
     private val providerObserver = Observer<ProviderObject?>{ providerData ->
         if (providerData != null) {
             provider = providerData
-            Toast.makeText(requireContext(), provider.name, Toast.LENGTH_SHORT).show()
         }else {
+            // create provider profile
             findNavController().navigate(R.id.action_mapsFragment_to_profileFragment)
         }
     }
 
     private val callback = OnMapReadyCallback { googleMap ->
-        //TODO: UPDATE MAP
+        //TODO: UPDATE MAP WITH SERVICE LOCATION DATA
         val sydney = LatLng(-34.0, 151.0)
         googleMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
         googleMap.moveCamera(CameraUpdateFactory.newLatLng(sydney))
@@ -60,7 +57,7 @@ class MapsFragment : Fragment(), View.OnClickListener {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
 
         auth = FirebaseAuth.getInstance()
 
@@ -72,6 +69,7 @@ class MapsFragment : Fragment(), View.OnClickListener {
     }
 
     private fun checkAuth() {
+        // send provider to login if auth is null
         if (auth.currentUser == null){
             findNavController().navigate(R.id.action_mapsFragment_to_login)
         }else{

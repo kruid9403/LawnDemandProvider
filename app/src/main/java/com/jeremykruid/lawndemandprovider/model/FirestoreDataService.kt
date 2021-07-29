@@ -2,7 +2,6 @@ package com.jeremykruid.lawndemandprovider.model
 
 import android.content.Context
 import android.net.Uri
-import android.widget.ImageView
 import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
 import com.google.firebase.firestore.FirebaseFirestore
@@ -12,8 +11,9 @@ import com.google.firebase.storage.FirebaseStorage
 class FirestoreDataService {
 
     val providerChecked by lazy { MutableLiveData<Boolean>() }
-    val firestore = FirebaseFirestore.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
 
+    //retrieve provider data from the database
     fun getProviderData(context: Context, uid: String): ProviderObject? {
         var provider: ProviderObject? = null
         firestore.collection("providerData").document(uid).get()
@@ -30,12 +30,14 @@ class FirestoreDataService {
         return provider
     }
 
+    // add provider data to the database
     fun setProvider(uid: String, providerObject: ProviderObject) {
 
         FirebaseFirestore.getInstance().collection("providerData")
             .document(uid).set(providerObject, SetOptions.merge())
     }
 
+    // save profile photo to firebase storage
     fun savePhoto(context: Context, uri: Uri, uid: String): String {
         var imgUrl = ""
 

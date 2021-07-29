@@ -10,12 +10,14 @@ import com.jeremykruid.lawndemandprovider.databinding.FragmentProfileBinding
 
 class ProfileFragment : Fragment() {
 
+    //TODO: NEXT SCREEN TO DO
+
     private lateinit var binding: FragmentProfileBinding
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
 
         binding = FragmentProfileBinding.inflate(layoutInflater)
         // Inflate the layout for this fragment

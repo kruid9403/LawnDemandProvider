@@ -13,19 +13,15 @@ class MapViewModel(application: Application): AndroidViewModel(application) {
     val loadingError by lazy { MutableLiveData<Boolean>() }
     val loading by lazy { MutableLiveData<Boolean>() }
 
-    private val disposable = CompositeDisposable()
     private val firebaseService = FirestoreDataService()
 
+    // get provider database
     fun getProviderData(context: Context, uid: String){
         provider.value = firebaseService.getProviderData(context, uid)
     }
 
+    // update provider database
     fun setProviderData(uid: String, providerObject: ProviderObject){
         firebaseService.setProvider(uid, providerObject)
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        disposable.clear()
     }
 }
