@@ -5,8 +5,7 @@ import android.content.Context
 import android.view.View
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
-import com.google.firebase.auth.FirebaseAuth
-import com.jeremykruid.lawndemandprovider.model.FirebaseAuthService
+import com.jeremykruid.lawndemandprovider.services.firebase.FirebaseAuthService
 
 class LoginViewModel(application: Application): AndroidViewModel(application) {
 

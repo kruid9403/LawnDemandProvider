@@ -1,45 +1,31 @@
 package com.jeremykruid.lawndemandprovider.model
 
-import android.os.Parcel
-import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
-data class ProviderObject(
-    val id: String?,
-    val name: String?,
-    val imgUrl: String?,
-    val lat: Long,
-    val lon: Long
-): Parcelable{
-    constructor(parcel: Parcel): this(
-        parcel.readString(),
-        parcel.readString(),
-        parcel.readString(),
-        parcel.readLong(),
-        parcel.readLong()
-    ){
+@Parcelize
+class ProviderObject{
+    var id: String? = null
+    var name: String? = null
+    var imgUrl: String? = null
+    var lat: Double? = null
+    var lon: Double? = null
+    var isOnline: Boolean? = null
+    var topProvider: Boolean? = false
+    var approved: Boolean = false
+    var nextJob: String? = null
 
-    }
-    override fun describeContents(): Int {
-        return 0
-    }
-
-    override fun writeToParcel(dest: Parcel, flags: Int) {
-        dest.writeString(id)
-        dest.writeString(name)
-        dest.writeString(imgUrl)
-        dest.writeLong(lat)
-        dest.writeLong(lon)
-    }
-
-    companion object CREATOR: Parcelable.Creator<ProviderObject>{
-        override fun createFromParcel(source: Parcel): ProviderObject {
-            return ProviderObject(source)
-        }
-
-        override fun newArray(size: Int): Array<ProviderObject?> {
-            return arrayOfNulls(size)
-        }
+    constructor()
+    constructor(id: String?, name: String?, imgUrl: String?, lat: Double?, lon: Double?,
+                isOnline: Boolean, topProvider: Boolean?, approved: Boolean, nextJob: String?){
+        this.id = id
+        this.name = name
+        this.imgUrl = imgUrl
+        this.lat = lat
+        this.lon = lon
+        this.isOnline = isOnline
+        this.topProvider = topProvider
+        this.approved = approved
+        this.nextJob = nextJob
 
     }
-
 }

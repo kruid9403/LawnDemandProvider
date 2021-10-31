@@ -10,9 +10,14 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
 
     <application
-        android:allowBackup="true"
+        android:name=".MainApplication"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -30,10 +35,13 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
+        <meta-data android:name="com.here.android.maps.appid" android:value="xjxnzPa8QbZYjlOXL3bP5Q"/>
+        <meta-data android:name="com.here.android.maps.apptoken" android:value="FHdBQg5zz5vTMHaw-6S5dsrXnoVqfjMgS9VIUp-QYXf88_gJEDywbg_QDIIdxFX7sa2oHF-cItXA1LDUxU2ylw"/>
 
         <activity
-            android:name=".views.MainActivity"
-            android:exported="true">
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

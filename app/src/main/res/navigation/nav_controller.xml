@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/mapsFragment"
-        android:name="com.jeremykruid.lawndemandprovider.views.MapsFragment"
+        android:name="com.jeremykruid.lawndemandprovider.ui.MapsFragment"
         android:label="fragment_maps"
         tools:layout="@layout/fragment_maps" >
         <action
@@ -19,7 +19,7 @@
     </fragment>
     <fragment
         android:id="@+id/login"
-        android:name="com.jeremykruid.lawndemandprovider.views.login.LoginFragment"
+        android:name="com.jeremykruid.lawndemandprovider.ui.login.LoginFragment"
         android:label="fragment_login"
         tools:layout="@layout/fragment_login" >
         <action
@@ -28,7 +28,7 @@
     </fragment>
     <fragment
         android:id="@+id/profileFragment"
-        android:name="com.jeremykruid.lawndemandprovider.views.login.ProfileFragment"
+        android:name="com.jeremykruid.lawndemandprovider.ui.login.ProfileFragment"
         android:label="fragment_profile"
         tools:layout="@layout/fragment_profile" >
         <action
