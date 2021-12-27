@@ -6,6 +6,7 @@ import android.location.Location
 import android.net.Uri
 import androidx.fragment.app.Fragment
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
@@ -15,7 +16,9 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.os.bundleOf
 import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
 import androidx.navigation.fragment.findNavController
 import com.afollestad.materialdialogs.MaterialDialog
@@ -25,10 +28,12 @@ import com.google.android.gms.location.LocationRequest.PRIORITY_BALANCED_POWER_A
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.jeremykruid.lawndemandprovider.R
 import com.jeremykruid.lawndemandprovider.databinding.FragmentMapsBinding
 import com.jeremykruid.lawndemandprovider.model.OrderObject
+import com.jeremykruid.lawndemandprovider.utilities.Constants.MapsFragmentConst.Companion.MAPS_FRAGMENT
 import com.jeremykruid.lawndemandprovider.viewModel.MapViewModel
 import java.util.*
 
@@ -49,6 +54,9 @@ class MapsFragment : Fragment(), View.OnClickListener {
 
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRequest: LocationRequest
+    
+    private lateinit var driverStateFrag: MapViewModel.DriverState
+    private lateinit var timer: Timer
 
     private val requestLocation =
         registerForActivityResult(
@@ -87,59 +95,41 @@ class MapsFragment : Fragment(), View.OnClickListener {
     }
 
     private fun updateUI(driverState: MapViewModel.DriverState) {
-        if (driverState.directions != null && driverState.currentJob != null) {
-            Log.e("update ui", "not null")
+        Log.e(MAPS_FRAGMENT, driverState.toString())
+        if(driverState.provider?.isOnline!!){
+            binding.mapGetWorkBtn.text = getString(R.string.go_offline)
+        }else{
+            binding.mapGetWorkBtn.text = getString(R.string.go_online)
+        }
+
+        if (driverState.pendingJob?.completed.equals("pending")){
+            nextJobDialog()
+        }
+        
+        if (driverState.currentJob?.completed.equals("accepted") &&
+            driverState.directions == null){
+
+                viewModel.updateMapNoJob(map)
+        }
+
+        if (driverState.currentJob?.completed == "accepted" && driverState.directions != null){
             viewModel.updateMapJob(map)
-            viewModel.drawPolyline(map)
-        }else{
-            viewModel.updateMapNoJob(map)
-            Log.e("update ui", "null")
-        }
+            binding.mapJobCount.text = driverState.currentJob?.streetAddress + "\n" +
+                    driverState.currentJob?.city + ", " + driverState.currentJob?.state + "\n" +
+                    (driverState.directions?.routes?.get(0)?.legs?.get(0)?.distance?.text)
 
-        if(driverState.currentJob == null && driverState.availableLawns == null){
-            viewModel.availableWork()
-        }else if (driverState.currentJob != null && driverState.currentJob?.completed != "pending") {
-            binding.mapJobCount.text = "${driverState.currentJob?.streetAddress.toString()} \n ${
-                driverState.directions?.routes?.get(0)?.legs?.get(0)?.distance?.text}"
-        }else{
-            binding.mapJobCount.text = driverState.availableLawns
-        }
-
-        when (driverState.online){
-            true -> {
-                binding.mapGetWorkBtn.text = getString(R.string.go_offline)
-                when(driverState.currentJob){
-                    null -> {
-                        Log.e("online", driverState.toString())
-                        if (viewModel.provider?.nextJob == "") {
-                            if (!viewModel.gettingJob) {
-                                viewModel.getNextJob()
-                            }
-                        }
-                    }
-                    else -> {
-                        when(driverState.currentJob!!.completed){
-                            "pending" -> {
-                                nextJobDialog()
-                                binding.mapGoBtn.visibility = View.GONE
-                            }
-                            "accepted" -> {
-                                binding.mapGoBtn.visibility = View.VISIBLE
-                            }
-                            else -> {
-                                binding.mapGoBtn.visibility = View.GONE
-                            }
-                        }
-                    }
+            if (driverState.directions?.routes?.get(0)?.legs?.get(0)?.distance?.value!! <= 25){
+                binding.mapGoBtn.visibility = View.VISIBLE
+                binding.mapGoBtn.setOnClickListener {
+                    val bundle = bundleOf(
+                        "orderId" to driverState.currentJob?.orderId
+                    )
+                    findNavController().navigate(R.id.action_mapsFragment_to_startJobFragment, bundle)
                 }
+            }else{
+                binding.mapGoBtn.visibility = View.GONE
             }
-            false -> binding.mapGetWorkBtn.text = getString(R.string.go_online)
         }
-        when(driverState.menuVisibility){
-            true -> binding.mapsMenuLayout.visibility = View.VISIBLE
-            false -> binding.mapsMenuLayout.visibility = View.GONE
-        }
-
     }
 
     private val callback = OnMapReadyCallback { mapReady ->
@@ -157,9 +147,9 @@ class MapsFragment : Fragment(), View.OnClickListener {
 
         binding = FragmentMapsBinding.inflate(layoutInflater)
 
-        setupLocation()
-
         checkAuth()
+
+        setupLocation()
 
         return binding.root
     }
@@ -191,6 +181,10 @@ class MapsFragment : Fragment(), View.OnClickListener {
                         viewModel.provider?.lat = lat as Double
                         viewModel.provider?.lon = lon as Double
 
+                        if (viewModel.driverState.value?.directions != null){
+                            viewModel.getDirections(map)
+                        }
+
                     }else{
                         Toast.makeText(requireContext(), "Location Null", Toast.LENGTH_SHORT).show()
                     }
@@ -202,8 +196,8 @@ class MapsFragment : Fragment(), View.OnClickListener {
 
         locationRequest = LocationRequest.create()
             .setPriority(PRIORITY_BALANCED_POWER_ACCURACY)
-            .setInterval(1000L)
-            .setSmallestDisplacement(100f)
+            .setInterval(10000L)
+            .setSmallestDisplacement(25f)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -212,12 +206,17 @@ class MapsFragment : Fragment(), View.OnClickListener {
         mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(callback)
 
-        viewModel = ViewModelProviders.of(this).get(MapViewModel::class.java)
+        viewModel = ViewModelProvider(this).get(MapViewModel::class.java)
+
+        viewModel.startOrderListener()
+        viewModel.refreshProvider()
+        viewModel.updateToken()
         viewModel.loading.observe(viewLifecycleOwner, loadingObserver)
         //viewModel.getProviderData(requireContext(), auth.uid.toString())
         viewModel.driverState.observe(viewLifecycleOwner){
             updateUI(it)
         }
+
     }
 
     override fun onClick(v: View?) {
@@ -232,7 +231,7 @@ class MapsFragment : Fragment(), View.OnClickListener {
             binding.mapGetWorkBtn -> {
                 when (viewModel.provider?.isOnline){
                     false -> {
-                        if (lat != null && lon != null) {
+                        if (viewModel.provider?.lat != null && viewModel.provider?.lon != null) {
                             viewModel.providerOnline()
                         }else{
                             Toast.makeText(requireContext(), "Location Missing", Toast.LENGTH_SHORT).show()
@@ -244,30 +243,38 @@ class MapsFragment : Fragment(), View.OnClickListener {
                 }
             }
             binding.mapGoBtn -> {
-                val uri: String = java.lang.String.format(Locale.ENGLISH, "geo:0,0?q=${
-                    viewModel.driverState.value?.currentJob?.streetAddress} ${
-                        viewModel.driverState.value?.currentJob?.city} ${
-                            viewModel.driverState.value?.currentJob?.state}")
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
-                startActivity(intent)
+                if (driverStateFrag.currentJob != null) {
+                    val uri: String = java.lang.String.format(
+                        Locale.ENGLISH, "geo:0,0?q=${
+                            viewModel.driverState.value?.currentJob?.streetAddress
+                        } ${
+                            viewModel.driverState.value?.currentJob?.city
+                        } ${
+                            viewModel.driverState.value?.currentJob?.state
+                        }"
+                    )
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
+                    startActivity(intent)
+                }else{
+                    Toast.makeText(requireContext(), "Wait for Job", Toast.LENGTH_SHORT).show()
+                }
             }
 
             binding.mapGetSettingsBtn -> {
-                //TODO: SETTINGS FRAGMENT
-                Log.e("settings", "click")
+                findNavController().navigate(R.id.action_mapsFragment_to_settingsFragment)
             }
         }
     }
 
     private fun nextJobDialog(){
-        if (viewModel.driverState.value?.currentJob != null) {
+        if (viewModel.driverState.value?.pendingJob != null) {
             MaterialDialog(requireContext()).show {
                 lifecycleOwner()
                 title(R.string.next_job)
                 message(
                     text = getString(
                         R.string.price,
-                        viewModel.driverState.value?.currentJob?.price.toString()
+                        viewModel.driverState.value?.pendingJob?.price.toString()
                     )
                 )
 
@@ -277,7 +284,8 @@ class MapsFragment : Fragment(), View.OnClickListener {
                 }
 
                 negativeButton(R.string.decline) {
-                    viewModel.declineJob(this)
+                    viewModel.declineJob()
+                    dismiss()
                 }
 
             }
@@ -286,6 +294,8 @@ class MapsFragment : Fragment(), View.OnClickListener {
 
     override fun onResume() {
         super.onResume()
+        auth = FirebaseAuth.getInstance()
+        viewModel = ViewModelProvider(this).get(MapViewModel::class.java)
         setupLocation()
         checkAuth()
     }

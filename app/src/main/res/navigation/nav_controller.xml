@@ -16,6 +16,12 @@
         <action
             android:id="@+id/action_mapsFragment_to_profileFragment"
             app:destination="@id/profileFragment" />
+        <action
+            android:id="@+id/action_mapsFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
+        <action
+            android:id="@+id/action_mapsFragment_to_startJobFragment"
+            app:destination="@id/startJobFragment" />
     </fragment>
     <fragment
         android:id="@+id/login"
@@ -33,6 +39,36 @@
         tools:layout="@layout/fragment_profile" >
         <action
             android:id="@+id/action_profileFragment_to_mapsFragment"
+            app:destination="@id/mapsFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.jeremykruid.lawndemandprovider.ui.SettingsFragment"
+        android:label="fragment_settings"
+        tools:layout="@layout/fragment_settings" >
+        <action
+            android:id="@+id/action_settingsFragment_to_mapsFragment"
+            app:destination="@id/mapsFragment" />
+        <action
+            android:id="@+id/action_settingsFragment_to_stripeOnboardingFragment"
+            app:destination="@id/stripeOnboardingFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/stripeOnboardingFragment"
+        android:name="com.jeremykruid.lawndemandprovider.ui.StripeOnboardingFragment"
+        android:label="fragment_stripe_onboarding"
+        tools:layout="@layout/fragment_stripe_onboarding" >
+        <action
+            android:id="@+id/action_stripeOnboardingFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/startJobFragment"
+        android:name="com.jeremykruid.lawndemandprovider.ui.startJob.StartJobFragment"
+        android:label="fragment_start_job"
+        tools:layout="@layout/fragment_start_job" >
+        <action
+            android:id="@+id/action_startJobFragment_to_mapsFragment"
             app:destination="@id/mapsFragment" />
     </fragment>
 </navigation>

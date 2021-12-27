@@ -16,15 +16,14 @@ data class Provider(
     var isOnline: Boolean = false,
     var isAvailable: Boolean = false,
     var topProvider: Boolean = false,
-    var approved: Boolean = false,
-    var nextJob: String = ""
+    var approved: Boolean = false
 )
 
 @Dao
 interface ProviderDao: AbstractDao<Provider> {
 
     @Query("SELECT * FROM provider LIMIT 1")
-    suspend fun getProvider(): Provider?
+    fun getProvider(): Provider?
 
     @Query("SELECT * FROM provider LIMIT 1")
     fun listenToProvider(): Flow<Provider?>

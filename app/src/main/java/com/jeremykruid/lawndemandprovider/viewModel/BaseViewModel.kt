@@ -1,8 +1,12 @@
 package com.jeremykruid.lawndemandprovider.viewModel
 
+import android.app.Application
 import android.content.Context
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.FirebaseFunctions
 import com.jeremykruid.lawndemandprovider.CoroutineConfig
 import com.jeremykruid.lawndemandprovider.services.api.ApiService
 import kotlinx.coroutines.CoroutineScope
@@ -13,7 +17,7 @@ import org.koin.core.inject
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-open class BaseViewModel: ViewModel(), KoinComponent {
+open class BaseViewModel(application: Application) : AndroidViewModel(application), KoinComponent {
 
     companion object{
         const val MAP_DIRECTION = "https://maps.googleapis.com"
@@ -22,6 +26,10 @@ open class BaseViewModel: ViewModel(), KoinComponent {
 
     protected val context: Context by inject()
     protected val coroutineConfig: CoroutineConfig by inject()
+
+    val functions = FirebaseFunctions.getInstance()
+    val uid = FirebaseAuth.getInstance().uid.toString()
+    val firestore = FirebaseFirestore.getInstance()
 
     protected fun launchOnIO(block: suspend CoroutineScope.() -> Unit): Job {
         return viewModelScope.launch(coroutineConfig.ioDispatcher) {

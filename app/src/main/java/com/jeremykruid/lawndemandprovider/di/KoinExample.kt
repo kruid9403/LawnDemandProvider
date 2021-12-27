@@ -28,7 +28,10 @@ val appModule = module {
     single {
         Room.databaseBuilder(androidContext(),
         Database::class.java,
-        PROVIDER_DB).fallbackToDestructiveMigration().build()
+        PROVIDER_DB)
+            .allowMainThreadQueries()
+            .fallbackToDestructiveMigration()
+            .build()
     }
     single { ProviderManager(get(), get(), get()) }
     single { OrderManager(get(), get()) }

@@ -2,14 +2,11 @@ package com.jeremykruid.lawndemandprovider.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import com.jeremykruid.lawndemandprovider.model.OrderDao
-import com.jeremykruid.lawndemandprovider.model.OrderObject
-import com.jeremykruid.lawndemandprovider.model.Provider
-import com.jeremykruid.lawndemandprovider.model.ProviderDao
+import com.jeremykruid.lawndemandprovider.model.*
 
 @Database(
     entities = [Provider::class, OrderObject::class],
-    version = 6,
+    version = 8,
     exportSchema = false
 )
 

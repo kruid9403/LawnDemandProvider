@@ -12,7 +12,6 @@ import com.jeremykruid.lawndemandprovider.CoroutineConfig
 import com.jeremykruid.lawndemandprovider.model.Provider
 import com.jeremykruid.lawndemandprovider.model.ProviderDao
 import org.koin.core.KoinComponent
-import timber.log.Timber
 
 class ProviderManager(
     private val orderManager: OrderManager,
@@ -32,7 +31,7 @@ class ProviderManager(
     }
 
     private var provider: Provider = Provider("1", "joe", "www.google.com", 0.0,
-        0.0, isOnline = false, isAvailable = false, topProvider = false, false, "")
+        0.0, isOnline = false, isAvailable = false, topProvider = false, false)
 
     private val uid = FirebaseAuth.getInstance().uid.toString()
     private val firestore = FirebaseFirestore.getInstance()
@@ -53,9 +52,12 @@ class ProviderManager(
             data["isOnline"] as Boolean,
             data["isAvailable"] as Boolean,
             data["topProvider"] as Boolean,
-            data["approved"] as Boolean,
-            data["nextJob"].toString()
+            data["approved"] as Boolean
         )
+    }
+
+    fun stripeListener(): DocumentReference {
+        return firestore.collection("providerStripeData").document(uid)
     }
 
     fun providerOffline(): HttpsCallableReference {
@@ -67,21 +69,36 @@ class ProviderManager(
     }
 
     fun getProvider(){
-        functions.getHttpsCallable(GET_PROVIDER).call(hashMapOf("uid" to uid)).addOnSuccessListener {
-            val stuff = it.data as HashMap<*,*>
-            provider = Provider(stuff["id"].toString(), stuff["name"].toString(), stuff["imgUrl"].toString(),
-                stuff["lat"].toString().toDouble(), stuff["lon"].toString().toDouble(), stuff["isOnline"].toString().toBoolean(),
-                stuff["isAvailable"].toString().toBoolean(), stuff["topProvider"].toString().toBoolean(),
-                stuff["approved"].toString().toBoolean(), stuff["nextJob"].toString())
-            coroutineConfig.applicationLaunchOnIO {
-                providerDao.insert(provider)
-                Log.e(PROVIDER_MANAGER, provider.toString())
+        Log.e("ProviderManager", uid)
+        if (FirebaseAuth.getInstance().uid != null) {
+            functions.getHttpsCallable(GET_PROVIDER).call(hashMapOf("uid" to uid))
+                .addOnSuccessListener {
+                    if (it.data != null) {
+                        val stuff = it.data as HashMap<*, *>
+                        provider = Provider(
+                            stuff["id"].toString(),
+                            stuff["name"].toString(),
+                            stuff["imgUrl"].toString(),
+                            stuff["lat"].toString().toDouble(),
+                            stuff["lon"].toString().toDouble(),
+                            stuff["isOnline"].toString().toBoolean(),
+                            stuff["isAvailable"].toString().toBoolean(),
+                            stuff["topProvider"].toString().toBoolean(),
+                            stuff["approved"].toString().toBoolean(),
+                        )
+                        coroutineConfig.applicationLaunchOnIO {
+                            providerDao.insert(provider)
+                            Log.e("ProviderManager",provider.toString())
+                        }
+                        Log.e("ProviderManager","New provider")
+                    }
+                }.addOnFailureListener {
+                        Log.e("ProviderManager", it.localizedMessage!!)
+
+                }
             }
-            Log.e(PROVIDER_MANAGER, "New provider")
-        }.addOnFailureListener {
-            Log.e(PROVIDER_MANAGER, it.localizedMessage!!)
         }
-    }
+
 
     fun setProvider(newProvider: Provider){
 

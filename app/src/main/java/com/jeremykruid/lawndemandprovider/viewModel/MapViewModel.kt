@@ -1,8 +1,9 @@
 package com.jeremykruid.lawndemandprovider.viewModel
 
-import android.content.Context
+import android.app.Application
 import android.graphics.Color
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.afollestad.materialdialogs.MaterialDialog
@@ -13,7 +14,7 @@ import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.maps.android.PolyUtil
 import com.jeremykruid.lawndemandprovider.R
 import com.jeremykruid.lawndemandprovider.managers.OrderManager
@@ -24,7 +25,8 @@ import com.jeremykruid.lawndemandprovider.model.ProviderDao
 import com.jeremykruid.lawndemandprovider.repositories.OrderRepo
 import com.jeremykruid.lawndemandprovider.repositories.ProviderRepo
 import com.jeremykruid.lawndemandprovider.services.api.DirectionResponses
-import com.jeremykruid.lawndemandprovider.viewModel.MapViewModel.Companion.MAP_VIEW_MODEL
+import com.jeremykruid.lawndemandprovider.utilities.Constants.MapViewModelConst.Companion.MAPS_VIEW_MODEL
+import com.jeremykruid.lawndemandprovider.utilities.Constants.MapViewModelConst.Companion.NEXT_JOB
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -32,22 +34,14 @@ import org.koin.core.inject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import timber.log.Timber
 
-class MapViewModel : BaseViewModel() {
-
-    companion object{
-        const val MAP_VIEW_MODEL = "MapViewModel"
-        const val NEXT_JOB = "getNextJob"
-        const val ACCEPT_JOB = "acceptJob"
-        const val DECLINE_JOB = "declineJob"
-    }
+class MapViewModel(application: Application) : BaseViewModel(application) {
 
     val loadingError by lazy { MutableLiveData<Boolean>() }
     val loading by lazy { MutableLiveData<Boolean>() }
     val driverState by lazy { MutableLiveData<DriverState>() }
 
-    private var newState = DriverState(false, null, false, null)
+    private var newState = DriverState(provider = null, pendingJob = null, currentJob = null, directions = null)
 
     var provider: Provider? = null
     var gettingJob: Boolean = false
@@ -58,57 +52,53 @@ class MapViewModel : BaseViewModel() {
     private val orderManager: OrderManager by inject()
     private val orderRepo: OrderRepo by inject()
 
-    private val functions = FirebaseFunctions.getInstance()
-
-    private val uid = FirebaseAuth.getInstance().uid.toString()
+    private val auth = FirebaseAuth.getInstance()
 
     var order: OrderObject? = null
 
     init {
-
-        providerManager.getProvider()
-
-        startProviderListener()
-
         viewModelScope.launch {
           providerRepo.listenToRepo()
-              .catch { error -> Timber.e(error.toString()) }
+              .catch { error -> Log.e("MapViewModel",error.toString()) }
               .collect {
                   when(it.isSuccessful){
                       true -> {
                           provider = it.data!!
 
-                          if (provider?.nextJob != null && driverState.value?.currentJob != null){
-                              orderManager.clearOrder(driverState.value?.currentJob)
-                              newState.currentJob = null
-                          }
-                          if (driverState.value != null) {
-                              newState = driverState.value!!
-                          }
-                          newState.online = provider?.isOnline!!
-                          if (provider?.nextJob != "") {
-                              orderManager.getOrder(provider?.nextJob!!)
-                          }
+                          newState.provider = it.data
                           driverState.postValue(newState)
+
+                          Log.e(MAPS_VIEW_MODEL, provider.toString())
                       }
-                      false -> Timber.e("nullish")
+                      false -> Log.e("MapViewModel","nullish")
                   }
               }
         }
+    }
 
+    fun startOrderListener(){
         viewModelScope.launch {
             orderRepo.listenToRepo()
-                .catch { error -> Timber.e(error.toString()) }
+                .catch { error -> Log.e("MapViewModel", error.toString()) }
                 .collect {
-                    when(it.isSuccessful){
+                    when (it.isSuccessful) {
                         true -> {
                             if (it.data != null) {
                                 order = it.data
-                                if (driverState.value != null) {
-                                    newState = driverState.value!!
+                                when(order!!.completed){
+                                    "accepted" -> {
+                                        newState.currentJob = order
+                                        newState.pendingJob = null
+                                        driverState.postValue(newState)
+                                        Log.e(MAPS_VIEW_MODEL, "accepted")
+                                    }
+
+                                    "pending" -> {
+                                        newState.pendingJob = order
+                                        driverState.postValue(newState)
+                                        Log.e(MAPS_VIEW_MODEL, "pending")
+                                    }
                                 }
-                                newState.currentJob = order
-                                driverState.postValue(newState)
                             }
                         }
                     }
@@ -116,48 +106,35 @@ class MapViewModel : BaseViewModel() {
         }
     }
 
-    private fun startProviderListener() {
-        Log.e(MAP_VIEW_MODEL, "start provider listener")
-        providerManager.setProviderListener().addSnapshotListener { value, error ->
-            if (error != null) {
-                Timber.e(error.toString())
+    fun refreshProvider(){
+        val data = hashMapOf(
+            "uid" to uid
+        )
+        functions.getHttpsCallable("refreshProvider").call(data).continueWith {
+            if (it.isSuccessful) {
+//                val result = it.result.data as MutableMap<String, Any>
+//                newState.provider = providerManager.providerToObject(result)
+//                providerDao.insert(newState.provider)
+//                driverState.postValue(newState)
+                Log.e("MapViewModel", "Provider Refreshed")
             }
-            if (value != null && value.exists()){
-                provider = providerManager.providerToObject(value.data!!)
-                    if (provider != null) {
-                        viewModelScope.launch { providerDao.insert(provider) }
 
-
-                        if (provider?.nextJob != null && driverState.value?.currentJob != null) {
-                            viewModelScope.launch { orderManager.clearOrder(driverState.value?.currentJob) }
-
-                            newState.currentJob = null
-                        }
-                        if (driverState.value != null) {
-                            newState = driverState.value!!
-                        }
-                        newState.online = provider?.isOnline!!
-                        if (provider?.nextJob != "") {
-                            orderManager.getOrder(provider?.nextJob!!)
-                        }
-                        driverState.postValue(newState)
-                        Timber.e("Provider from manager")
-
-                        if (provider!!.nextJob != "") {
-                            orderManager.orderListener(provider!!.nextJob)
-                        }
-                    }
-
-            }
+        }.addOnFailureListener {
+            Log.e("MapViewModel", it.toString())
         }
     }
 
     fun providerOffline(){
+        Log.e("MapViewModel", "ProviderOffline")
         loading.postValue(true)
-        providerManager.providerOffline().call().continueWith { loading.postValue(false) }
+        providerManager.providerOffline().call().continueWith {
+            Log.e("MapViewModel", "ProviderOffline " + it.result.toString())
+            loading.postValue(false)
+        }
     }
 
     fun providerOnline(){
+        Log.e("MapViewModel", "ProviderOnline")
         loading.postValue(true)
         val data = hashMapOf(
             "lat" to provider?.lat,
@@ -165,41 +142,20 @@ class MapViewModel : BaseViewModel() {
             "topProvider" to provider?.topProvider,
             "available" to provider?.isAvailable
         )
-        providerManager.providerOnline().call(data).continueWith { loading.postValue(false) }
-    }
-
-    fun updateProvider(){
-        providerManager.setProvider(provider!!)
-        if (provider!!.isOnline && provider!!.nextJob == ""){
-            getNextJob()
-        }
-    }
-
-    fun availableWork(){
-        if (driverState.value != null){
-            newState = driverState.value!!
-        }
-        viewModelScope.launch {
-            Timber.e("coroutine")
-            val data = hashMapOf(
-                "lat" to provider?.lat,
-                "lon" to provider?.lon
-            )
-            functions.getHttpsCallable(OrderManager.AVAILABLE_LAWNS).call(data).addOnSuccessListener {
-                newState.availableLawns = it.data.toString()
-                driverState.postValue(newState)
-            }
-
+        providerManager.providerOnline().call(data).continueWith {
+            Log.e("MapViewModel", "ProviderOnline " + it.result.toString())
+            loading.postValue(false)
         }
     }
 
     fun updateMapJob(mapFragment: GoogleMap){
+        mapFragment.clear()
         val boundsBuilder = LatLngBounds.builder()
         val myLatLng = LatLng(provider!!.lat, provider!!.lon)
         val markerOptions = MarkerOptions()
             .position(myLatLng)
             .title("Me")
-        val customerLatLon = LatLng(driverState.value?.currentJob!!.lat, driverState.value?.currentJob!!.lon)
+        val customerLatLon  = LatLng(driverState.value?.currentJob!!.lat, driverState.value?.currentJob!!.lon)
         val customerMarker = MarkerOptions()
             .position(customerLatLon)
             .title("Customer Location")
@@ -215,6 +171,8 @@ class MapViewModel : BaseViewModel() {
         mapFragment.moveCamera(CameraUpdateFactory.newLatLngBounds(builder, 500))
         val marker = LatLng(driverState.value?.currentJob?.lat!!, driverState.value?.currentJob?.lon!!)
         mapFragment.addMarker(MarkerOptions().position(marker))
+
+        drawPolyline(mapFragment)
     }
 
     fun updateMapNoJob(mapFragment: GoogleMap) {
@@ -231,11 +189,11 @@ class MapViewModel : BaseViewModel() {
         }
     }
 
-    private fun getDirections(mapFragment: GoogleMap) {
+    fun getDirections(mapFragment: GoogleMap) {
         val origin = "${provider!!.lat},${provider!!.lon}"
         val destination = "${driverState.value?.currentJob!!.lat},${driverState.value?.currentJob!!.lon}"
 
-        Log.e(MAP_VIEW_MODEL, "Get directions")
+        Log.e(MAPS_VIEW_MODEL, "Get directions")
         viewModelScope.launch {
             apiServices(context).getDirections(origin, destination, context.getString(R.string.google_maps_key))
                 .enqueue(object: Callback<DirectionResponses> {
@@ -244,22 +202,28 @@ class MapViewModel : BaseViewModel() {
                         response: Response<DirectionResponses>
                     ) {
                         if (response.body()?.routes?.size!! > 0) {
+                            if (driverState.value != null){
+                                newState = driverState.value!!
+                            }
                             newState.directions = response.body()
                             driverState.postValue(newState)
-
-                            Log.e("response", response.body().toString())
                         }else{
-                            Log.e("response", response.body().toString())
+                            if (driverState.value != null){
+                                newState = driverState.value!!
+                            }
                             newState.directions = null
                             driverState.postValue(newState)
+
                         }
                     }
 
                     override fun onFailure(call: Call<DirectionResponses>, t: Throwable) {
                         Log.e("response", t.localizedMessage)
-
+                        if (driverState.value != null){
+                        }
                         newState.directions = null
                         driverState.postValue(newState)
+
                     }
 
                 })
@@ -285,55 +249,84 @@ class MapViewModel : BaseViewModel() {
         mapFragment.setMinZoomPreference(12f)
     }
 
-    fun getNextJob() {
-        gettingJob = true
-
-        val data = hashMapOf(
-            "lat" to provider?.lat,
-            "lon" to provider?.lon,
-            "topProvider" to provider?.topProvider
-        )
-
-        functions.getHttpsCallable(NEXT_JOB).call(data).continueWith {
-            val result = it.result.data as MutableMap<String, Any>
-            newState.currentJob = orderManager.orderToObject(result)
-            driverState.postValue(newState)
-            gettingJob = false
-        }
-    }
+//    fun getNextJob() {
+//        gettingJob = true
+//
+//        val data = hashMapOf(
+//            "lat" to provider?.lat,
+//            "lon" to provider?.lon,
+//            "topProvider" to provider?.topProvider
+//        )
+//
+//        functions.getHttpsCallable(NEXT_JOB).call(data).continueWith {
+//            val result = it.result.data as MutableMap<String, Any>
+//            newState.currentJob = orderManager.orderToObject(result)
+//            driverState.postValue(newState)
+//
+//            gettingJob = false
+//        }
+//    }
 
     fun acceptJob(materialDialog: MaterialDialog) {
+        orderManager.clearOrder(driverState.value?.pendingJob)
+        newState.pendingJob = null
         val data = hashMapOf(
             "uid" to uid,
-            "orderId" to driverState.value?.currentJob?.orderId
+            "orderId" to driverState.value?.pendingJob?.orderId
         )
         orderManager.acceptJob().call(data).continueWith {
             if (it.isSuccessful){
-                //TODO: UPDATE ACCEPT
+                viewModelScope.launch {
+//                    pendingRepo.remove(driverState.value?.pendingJob!!)
+                }
+                materialDialog.dismiss()
+            }else{
+                Log.e("MapViewModel", it.exception.toString())
                 materialDialog.dismiss()
             }
         }
     }
 
-    fun declineJob(materialDialog: MaterialDialog) {
-        val data = hashMapOf(
-            "uid" to uid,
-            "orderId" to driverState.value?.currentJob?.orderId
-        )
-        orderManager.declineJob().call(data).continueWith {
-            if (it.isSuccessful){
-                provider?.nextJob = ""
-                providerManager.setProvider(provider!!)
-                materialDialog.dismiss()
+    fun declineJob() {
+        if (driverState.value?.pendingJob != null) {
+            orderManager.clearPendingOrder(driverState.value?.pendingJob!!)
+
+            Log.e("MapViewModel", driverState.value?.pendingJob?.orderId!!)
+
+            val data = hashMapOf(
+                "uid" to uid,
+                "orderId" to driverState.value?.pendingJob?.orderId,
+                "lat" to provider?.lat,
+                "lon" to provider?.lon
+            )
+            orderManager.declineJob().call(data).addOnSuccessListener {
+                Log.e("MapViewModel", "Order Declined")
+            }.addOnFailureListener {
+                Toast.makeText(context, "${it.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+
+            newState.pendingJob = null
+            driverState.postValue(newState)
+        }
+    }
+
+    fun updateToken(){
+        Log.e("OnCrate", "token")
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { token ->
+            val data = hashMapOf(
+                "updateToken" to token.result,
+                "uid" to auth.uid.toString()
+            )
+            functions.getHttpsCallable("updateToken").call(data).addOnCompleteListener {
+                Log.e("FirebaseMessaging", token.result)
             }
         }
     }
 
     data class DriverState(
-        var online: Boolean = false,
+        var provider: Provider? = null,
+        var pendingJob: OrderObject? = null,
         var currentJob: OrderObject? = null,
-        var menuVisibility: Boolean = false,
-        var availableLawns: String? = "",
         var directions: DirectionResponses? = null
     )
 }

@@ -1,18 +1,20 @@
 package com.jeremykruid.lawndemandprovider.managers
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.HttpsCallableReference
 import com.jeremykruid.lawndemandprovider.CoroutineConfig
 import com.jeremykruid.lawndemandprovider.model.OrderDao
 import com.jeremykruid.lawndemandprovider.model.OrderObject
+import com.jeremykruid.lawndemandprovider.utilities.Constants.MapViewModelConst.Companion.ACCEPT_JOB
+import com.jeremykruid.lawndemandprovider.utilities.Constants.MapViewModelConst.Companion.DECLINE_JOB
 import com.jeremykruid.lawndemandprovider.viewModel.MapViewModel
 import org.koin.core.KoinComponent
-import timber.log.Timber
 
 class OrderManager(
     private val coroutineConfig: CoroutineConfig,
-    private val orderDao: OrderDao,
+    private val orderDao: OrderDao
 ): KoinComponent {
 
     companion object{
@@ -39,17 +41,21 @@ class OrderManager(
         }
     }
 
-    suspend fun clearOrder(updateOrder: OrderObject?) {
+    fun clearOrder(updateOrder: OrderObject?) {
         if (updateOrder != null) {
             orderDao.delete(updateOrder!!)
             order = null
         }
     }
 
+    fun clearPendingOrder(pendingOrder: OrderObject){
+        orderDao.delete(pendingOrder)
+    }
+
     fun orderListener(orderId: String){
         firestore.collection(ORDERS).document(orderId).addSnapshotListener { value, error ->
             if (error != null){
-                Timber.e(error.toString())
+                Log.e("OrderManager",error.toString())
             }
 
             if (value != null && value.exists()){
@@ -59,7 +65,7 @@ class OrderManager(
                     if (order != null) {
                         orderDao.insert(order!!)
 
-                        Timber.e(order.toString())
+                        Log.e("OrderManager", order.toString())
                     }
                 }
             }
@@ -67,11 +73,11 @@ class OrderManager(
     }
 
     fun acceptJob(): HttpsCallableReference {
-        return functions.getHttpsCallable(MapViewModel.ACCEPT_JOB)
+        return functions.getHttpsCallable(ACCEPT_JOB)
     }
 
     fun declineJob(): HttpsCallableReference {
-        return functions.getHttpsCallable(MapViewModel.DECLINE_JOB)
+        return functions.getHttpsCallable(DECLINE_JOB)
     }
 
     fun orderToObject(data: MutableMap<String, Any>):OrderObject{
