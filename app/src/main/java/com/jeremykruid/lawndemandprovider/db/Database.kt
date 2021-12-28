@@ -6,7 +6,7 @@ import com.jeremykruid.lawndemandprovider.model.*
 
 @Database(
     entities = [Provider::class, OrderObject::class],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 

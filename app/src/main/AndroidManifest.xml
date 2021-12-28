@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.jeremykruid.lawndemandprovider">
-
     <!--
          The ACCESS_COARSE/FINE_LOCATION permissions are not required to use
          Google Maps Android API v2, but you must specify either coarse or fine
          location permissions for the "MyLocation" functionality.
     -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <application
         android:name=".MainApplication"
@@ -23,7 +22,15 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.LawnDemandProvider">
-
+        <activity
+            android:name=".ui.helper.DeclineJobLogOutActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.helper.AcceptJobActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.helper.DeclineJobActivity"
+            android:exported="false" />
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
              (See the file "res/values/google_maps_api.xml").
@@ -35,8 +42,12 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
-        <meta-data android:name="com.here.android.maps.appid" android:value="xjxnzPa8QbZYjlOXL3bP5Q"/>
-        <meta-data android:name="com.here.android.maps.apptoken" android:value="FHdBQg5zz5vTMHaw-6S5dsrXnoVqfjMgS9VIUp-QYXf88_gJEDywbg_QDIIdxFX7sa2oHF-cItXA1LDUxU2ylw"/>
+        <meta-data
+            android:name="com.here.android.maps.appid"
+            android:value="xjxnzPa8QbZYjlOXL3bP5Q" />
+        <meta-data
+            android:name="com.here.android.maps.apptoken"
+            android:value="FHdBQg5zz5vTMHaw-6S5dsrXnoVqfjMgS9VIUp-QYXf88_gJEDywbg_QDIIdxFX7sa2oHF-cItXA1LDUxU2ylw" />
 
         <activity
             android:name=".ui.MainActivity"
@@ -49,10 +60,11 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".services.fcm.MyFirebaseMessagingService"
+        <service
+            android:name=".services.fcm.MyFirebaseMessagingService"
             android:stopWithTask="false">
             <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
     </application>

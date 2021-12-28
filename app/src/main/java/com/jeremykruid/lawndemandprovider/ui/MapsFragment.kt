@@ -1,5 +1,6 @@
 package com.jeremykruid.lawndemandprovider.ui
 
+import android.app.Dialog
 import android.content.Intent
 import android.location.Geocoder
 import android.location.Location
@@ -7,6 +8,7 @@ import android.net.Uri
 import androidx.fragment.app.Fragment
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
@@ -34,7 +36,11 @@ import com.jeremykruid.lawndemandprovider.R
 import com.jeremykruid.lawndemandprovider.databinding.FragmentMapsBinding
 import com.jeremykruid.lawndemandprovider.model.OrderObject
 import com.jeremykruid.lawndemandprovider.utilities.Constants.MapsFragmentConst.Companion.MAPS_FRAGMENT
+import com.jeremykruid.lawndemandprovider.utilities.Constants.MessagingConst.Companion.ACCEPT_JOB
+import com.jeremykruid.lawndemandprovider.utilities.Constants.MessagingConst.Companion.DECLINE_JOB
+import com.jeremykruid.lawndemandprovider.utilities.Constants.MessagingConst.Companion.DECLINE_LOG_OUT
 import com.jeremykruid.lawndemandprovider.viewModel.MapViewModel
+import com.squareup.kotlinpoet.NUMBER
 import java.util.*
 
 class MapsFragment : Fragment(), View.OnClickListener {
@@ -56,7 +62,8 @@ class MapsFragment : Fragment(), View.OnClickListener {
     private lateinit var locationRequest: LocationRequest
     
     private lateinit var driverStateFrag: MapViewModel.DriverState
-    private lateinit var timer: Timer
+    private var notificationOrderId: String = ""
+    private var jobDialog: MaterialDialog? = null
 
     private val requestLocation =
         registerForActivityResult(
@@ -102,13 +109,16 @@ class MapsFragment : Fragment(), View.OnClickListener {
             binding.mapGetWorkBtn.text = getString(R.string.go_online)
         }
 
-        if (driverState.pendingJob?.completed.equals("pending")){
+        if (driverState.pendingJob?.completed.equals("pending") && arguments == null){
             nextJobDialog()
+        } else {
+            if (jobDialog != null){
+                jobDialog?.dismiss()
+            }
         }
         
         if (driverState.currentJob?.completed.equals("accepted") &&
             driverState.directions == null){
-
                 viewModel.updateMapNoJob(map)
         }
 
@@ -152,6 +162,31 @@ class MapsFragment : Fragment(), View.OnClickListener {
         setupLocation()
 
         return binding.root
+    }
+
+    private fun checkArguments() {
+        Log.e("MapsFrag", arguments.toString())
+        if (arguments?.get(ACCEPT_JOB) != null){
+            Handler(Looper.getMainLooper()).postDelayed( {
+                viewModel.acceptJobFromNotification(arguments?.getString(ACCEPT_JOB).toString())
+                Log.e("MapsFrag", arguments?.getString(ACCEPT_JOB).toString()+ "ACCEPT")
+            }, 1000)
+        }
+
+        if (arguments?.get(DECLINE_JOB) != null){
+            Handler(Looper.getMainLooper()).postDelayed( {
+                viewModel.declineJobNotification(arguments?.getString(DECLINE_JOB).toString())
+
+                Log.e("MapsFrag", arguments?.getString(DECLINE_JOB).toString() + "DECLINE")
+            }, 1000)
+
+        }
+
+        if (arguments?.get(DECLINE_LOG_OUT) != null){
+            Handler(Looper.getMainLooper()).postDelayed( {
+                viewModel.declineLogOut(arguments?.getString(DECLINE_LOG_OUT).toString())
+            }, 1000)
+        }
     }
 
     private fun checkAuth() {
@@ -217,6 +252,9 @@ class MapsFragment : Fragment(), View.OnClickListener {
             updateUI(it)
         }
 
+
+        checkArguments()
+
     }
 
     override fun onClick(v: View?) {
@@ -242,24 +280,6 @@ class MapsFragment : Fragment(), View.OnClickListener {
                     }
                 }
             }
-            binding.mapGoBtn -> {
-                if (driverStateFrag.currentJob != null) {
-                    val uri: String = java.lang.String.format(
-                        Locale.ENGLISH, "geo:0,0?q=${
-                            viewModel.driverState.value?.currentJob?.streetAddress
-                        } ${
-                            viewModel.driverState.value?.currentJob?.city
-                        } ${
-                            viewModel.driverState.value?.currentJob?.state
-                        }"
-                    )
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
-                    startActivity(intent)
-                }else{
-                    Toast.makeText(requireContext(), "Wait for Job", Toast.LENGTH_SHORT).show()
-                }
-            }
-
             binding.mapGetSettingsBtn -> {
                 findNavController().navigate(R.id.action_mapsFragment_to_settingsFragment)
             }
@@ -268,7 +288,7 @@ class MapsFragment : Fragment(), View.OnClickListener {
 
     private fun nextJobDialog(){
         if (viewModel.driverState.value?.pendingJob != null) {
-            MaterialDialog(requireContext()).show {
+            jobDialog = MaterialDialog(requireContext()).show {
                 lifecycleOwner()
                 title(R.string.next_job)
                 message(
@@ -284,6 +304,7 @@ class MapsFragment : Fragment(), View.OnClickListener {
                 }
 
                 negativeButton(R.string.decline) {
+                    //TODO FIX 2 CLICK PROBLEM
                     viewModel.declineJob()
                     dismiss()
                 }
