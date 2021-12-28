@@ -20,4 +20,6 @@
     <string name="go_offline">Go Offline</string>
     <string name="next_job">Next Job</string>
     <string name="price">%1$s</string>
+    <string name="channel_name">Pending Lawn</string>
+    <string name="channel_description">This channel is for pending lawns</string>
 </resources>

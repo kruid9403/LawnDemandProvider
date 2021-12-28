@@ -23,7 +23,10 @@ data class OrderObject @Ignore constructor(
     var price: Double = 0.0,
     var status: String = "",
     var completed: String = "",
-    var provider: String = ""
+    var provider: String = "",
+    var acceptedTime: Long = 0L,
+    var startedTime: Long = 0L,
+    var completedTime: Long = 0L
 ){
     constructor() : this("0", "")
 }

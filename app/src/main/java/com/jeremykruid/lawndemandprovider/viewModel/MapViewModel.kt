@@ -128,8 +128,12 @@ class MapViewModel(application: Application) : BaseViewModel(application) {
         Log.e("MapViewModel", "ProviderOffline")
         loading.postValue(true)
         providerManager.providerOffline().call().continueWith {
-            Log.e("MapViewModel", "ProviderOffline " + it.result.toString())
-            loading.postValue(false)
+            if (it.isSuccessful) {
+                loading.postValue(false)
+            }else{
+                loading.postValue(false)
+                Toast.makeText(context, "Log Out Failed", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -249,40 +253,39 @@ class MapViewModel(application: Application) : BaseViewModel(application) {
         mapFragment.setMinZoomPreference(12f)
     }
 
-//    fun getNextJob() {
-//        gettingJob = true
-//
-//        val data = hashMapOf(
-//            "lat" to provider?.lat,
-//            "lon" to provider?.lon,
-//            "topProvider" to provider?.topProvider
-//        )
-//
-//        functions.getHttpsCallable(NEXT_JOB).call(data).continueWith {
-//            val result = it.result.data as MutableMap<String, Any>
-//            newState.currentJob = orderManager.orderToObject(result)
-//            driverState.postValue(newState)
-//
-//            gettingJob = false
-//        }
-//    }
-
-    fun acceptJob(materialDialog: MaterialDialog) {
-        orderManager.clearOrder(driverState.value?.pendingJob)
-        newState.pendingJob = null
+    fun acceptJob(materialDialog: MaterialDialog?) {
         val data = hashMapOf(
             "uid" to uid,
             "orderId" to driverState.value?.pendingJob?.orderId
         )
+        orderManager.clearOrder(driverState.value?.pendingJob)
+        newState.pendingJob = null
         orderManager.acceptJob().call(data).continueWith {
             if (it.isSuccessful){
                 viewModelScope.launch {
 //                    pendingRepo.remove(driverState.value?.pendingJob!!)
                 }
-                materialDialog.dismiss()
+                materialDialog?.dismiss()
             }else{
                 Log.e("MapViewModel", it.exception.toString())
-                materialDialog.dismiss()
+                materialDialog?.dismiss()
+            }
+        }
+    }
+
+    fun acceptJobFromNotification(orderId: String){
+        val data = hashMapOf(
+            "uid" to uid,
+            "orderId" to orderId
+        )
+        orderManager.clearOrder(driverState.value?.pendingJob)
+        newState.pendingJob = null
+        orderManager.acceptJob().call(data).continueWith {
+            if (it.isSuccessful){
+                newState.pendingJob = null
+                driverState.postValue(newState)
+            }else{
+                Log.e("MapViewModel", it.exception.toString())
             }
         }
     }
@@ -310,6 +313,40 @@ class MapViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
+    fun declineJobNotification(orderId: String){
+            orderManager.clearPendingOrder(driverState.value?.pendingJob!!)
+
+            val data = hashMapOf(
+                "orderId" to orderId
+            )
+            orderManager.declineJob().call(data).addOnSuccessListener {
+                Log.e("MapViewModel", "Order Declined")
+            }.addOnFailureListener {
+                Toast.makeText(context, "${it.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+
+            newState.pendingJob = null
+            driverState.postValue(newState)
+    }
+
+    fun declineLogOut(orderId: String) {
+        orderManager.clearPendingOrder(driverState.value?.pendingJob!!)
+
+        val data = hashMapOf(
+            "orderId" to orderId
+        )
+        providerOffline()
+        
+        orderManager.declineJob().call(data).addOnSuccessListener {
+            Log.e("MapViewModel", "Order Declined")
+        }.addOnFailureListener {
+            Toast.makeText(context, "${it.localizedMessage}", Toast.LENGTH_SHORT).show()
+        }
+
+        newState.pendingJob = null
+        driverState.postValue(newState)
+    }
+
     fun updateToken(){
         Log.e("OnCrate", "token")
         FirebaseMessaging.getInstance().token.addOnCompleteListener { token ->
@@ -322,6 +359,7 @@ class MapViewModel(application: Application) : BaseViewModel(application) {
             }
         }
     }
+    
 
     data class DriverState(
         var provider: Provider? = null,
